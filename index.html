@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>가전 전기세 계산기 | 와트·사용 시간으로 한 달 요금</title>
+<meta name="description" content="전기장판, 히터, 온풍기, 제습기 등 가전의 소비전력(W)과 하루 사용 시간만 넣으면 한 달 전기요금이 얼마 늘어나는지 누진 구간까지 반영해 계산해 드려요.">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+/* 한 화면 계산기: 위 입력 카드 → 아래 결과 카드. 결과 숫자를 가장 크게. */
+:root{--bg:#fbf6ea;--card:#fff;--ink:#2a2620;--muted:#7b7365;--line:#ece3cf;--accent:#e0a100;--accent-soft:#fff2c9;--good:#2f7a4f;--warn:#c9622b;--font:'Gowun Dodum','Apple SD Gothic Neo','Malgun Gothic',sans-serif;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17150f;--card:#221f17;--ink:#f1ece0;--muted:#a69d8a;--line:#3a3426;--accent:#f2bb2c;--accent-soft:#3a2f12;--good:#7fcf9c;--warn:#ee9a62;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);line-height:1.6;font-size:16px}
+.wrap{max-width:720px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:28px;-webkit-text-stroke:.5px currentColor;text-wrap:balance}
+.lead{color:var(--muted);margin:6px 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:16px}
+.card h2{font-size:18px;-webkit-text-stroke:.35px currentColor;margin-bottom:12px}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.presets button{font:inherit;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:7px 13px;cursor:pointer}
+.presets button.on{background:var(--accent);border-color:var(--accent);color:#2a2000}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:13px;color:var(--muted)}
+input,select{font:inherit;font-size:16px;width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink)}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+.hint{font-size:13px;color:var(--muted);margin-top:8px}
+.big{font-size:42px;-webkit-text-stroke:1px currentColor;font-variant-numeric:tabular-nums;line-height:1.2}
+.big small{font-size:18px;-webkit-text-stroke:0}
+.sub{color:var(--muted);margin-top:4px}
+.rows{margin-top:14px;border-top:1px dashed var(--line)}
+.row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed var(--line);font-variant-numeric:tabular-nums}
+.row span:first-child{color:var(--muted)}
+.tag{display:inline-block;font-size:12px;padding:2px 9px;border-radius:999px;background:var(--accent-soft);color:var(--ink);margin-left:6px}
+.warn{color:var(--warn)}
+.note{font-size:13px;color:var(--muted);line-height:1.7}
+.note b{color:var(--ink)}
+a{color:var(--accent)}
+footer{font-size:13px;color:var(--muted);text-align:center;margin-top:24px}
+@media (max-width:520px){.grid{grid-template-columns:1fr}.big{font-size:36px}h1{font-size:24px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>가전 전기세 계산기</h1>
+  <p class="lead">가전 뒷면 라벨의 <b>소비전력(W)</b>과 하루 사용 시간만 넣으면, 한 달 전기요금이 얼마나 늘어나는지 누진 구간까지 반영해 계산해요.</p>
+
+  <section class="card">
+    <h2>1. 어떤 가전인가요?</h2>
+    <div class="presets" id="presets"></div>
+    <div class="grid">
+      <div class="field"><label for="w">소비전력 (W)</label><input id="w" type="number" inputmode="numeric" min="1" value="1000"></div>
+      <div class="field"><label for="h">하루 사용 시간</label><input id="h" type="number" inputmode="decimal" min="0" max="24" step="0.5" value="8"></div>
+      <div class="field"><label for="d">한 달 사용 일수</label><input id="d" type="number" inputmode="numeric" min="1" max="31" value="30"></div>
+      <div class="field"><label for="ratio">실제로 켜져 있는 비율</label><select id="ratio"><option value="1">계속 같은 세기 (100%)</option><option value="0.7">온도 맞추면 쉬었다 켜짐 (약 70%)</option><option value="0.5">자주 쉬는 편 (약 50%)</option></select></div>
+    </div>
+    <p class="hint">버튼의 W는 흔한 제품의 <b>예시값</b>이에요. 정확한 값은 우리 집 제품 라벨이나 설명서의 '소비전력'을 넣어 주세요.</p>
+  </section>
+
+  <section class="card">
+    <h2>2. 우리 집 평소 사용량</h2>
+    <div class="grid">
+      <div class="field"><label for="base">이 가전 빼고 한 달 사용량 (kWh)</label><input id="base" type="number" inputmode="numeric" min="0" value="250"></div>
+      <div class="field"><label for="season">요금 계절</label><select id="season"><option value="other">봄·가을 (3~6월, 9~11월)</option><option value="winter">겨울 (12~2월)</option><option value="summer">여름 (7~8월)</option></select></div>
+    </div>
+    <p class="hint">지난달 고지서의 '사용량(kWh)'을 넣으면 가장 정확해요. 모르면 250 정도로 두세요.</p>
+  </section>
+
+  <section class="card" aria-live="polite">
+    <h2>3. 결과</h2>
+    <div class="big" id="add">0<small>원</small></div>
+    <div class="sub" id="addSub"></div>
+    <div class="rows" id="rows"></div>
+    <p class="note" id="tierNote" style="margin-top:12px"></p>
+  </section>
+
+  <section class="card note">
+    <b>계산 기준</b><br>
+    한국전력 주택용(저압) 요금표 기준이에요. 기본요금 910원·1,600원·7,300원, 전력량요금 kWh당 120.0원(200kWh 이하)·214.6원(201~400kWh)·307.3원(400kWh 초과), 여름(7~8월)은 구간이 300·450kWh로 바뀌어요. 겨울(12~2월)과 여름에는 1,000kWh를 넘는 부분에 kWh당 736.2원이 붙어요.<br>
+    여기에 기후환경요금 kWh당 9.0원, 연료비조정요금 kWh당 5.0원(2026년 10~12월분)을 더했어요.<br>
+    <b>부가가치세와 전력산업기반기금은 빼고 계산</b>해서 실제 고지서는 이보다 조금 더 나와요. 아파트 단일계약, 복지할인, 대가족 할인 등은 반영하지 않았어요.<br>
+    더 자세한 설명은 <a href="https://blog.naver.com/beautiful9716" target="_blank" rel="noopener">생활정보zip 블로그</a>의 전기요금 글에 정리돼 있어요.
+  </section>
+  <footer>생활정보zip · 요금 단가는 바뀔 수 있어요. 정확한 금액은 한전 고지서를 확인해 주세요.</footer>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const PRE=[['전기장판(2인)',200],['온수매트',350],['전기히터',1000],['온풍기',2000],['라디에이터',1500],['제습기',300],['가습기(가열식)',300],['에어컨',1800],['건조기',2000],['TV 65인치',150]];
+$('#presets').innerHTML=PRE.map(([n,w])=>`<button type="button" data-w="${w}">${n} <small>${w}W</small></button>`).join('');
+$('#presets').onclick=e=>{const b=e.target.closest('button');if(!b)return;$('#w').value=b.dataset.w;document.querySelectorAll('#presets button').forEach(x=>x.classList.toggle('on',x===b));calc()};
+const won=n=>Math.round(n).toLocaleString('ko-KR');
+// 주택용 저압: 기본요금+전력량요금(누진)+기후환경 9.0+연료비 5.0 (부가세·기금 제외)
+function bill(kwh,season){
+  const b1=season==='summer'?300:200,b2=season==='summer'?450:400;
+  const basic=kwh<=b1?910:kwh<=b2?1600:7300;
+  let e=Math.min(kwh,b1)*120.0+Math.max(0,Math.min(kwh,b2)-b1)*214.6+Math.max(0,kwh-b2)*307.3;
+  if(season!=='other'&&kwh>1000)e+=(kwh-1000)*(736.2-307.3); // 1,000kWh 초과분은 736.2원
+  const extra=kwh*(9.0+5.0);
+  return {basic,energy:e,extra,total:basic+e+extra};
+}
+function tierOf(kwh,season){const b1=season==='summer'?300:200,b2=season==='summer'?450:400;return kwh<=b1?1:kwh<=b2?2:3}
+function calc(){
+  const w=Math.max(0,+$('#w').value||0),h=Math.min(24,Math.max(0,+$('#h').value||0)),d=Math.min(31,Math.max(0,+$('#d').value||0)),r=+$('#ratio').value,base=Math.max(0,+$('#base').value||0),s=$('#season').value;
+  const kwh=w/1000*h*d*r;const A=bill(base,s),B=bill(base+kwh,s);const add=B.total-A.total;
+  $('#add').innerHTML=won(add)+'<small>원</small>';
+  $('#addSub').textContent=`한 달 약 ${kwh.toFixed(1)}kWh를 더 써서, 고지서가 이만큼 늘어나요 (부가세·기금 제외)`;
+  const t1=tierOf(base,s),t2=tierOf(base+kwh,s);
+  $('#rows').innerHTML=[
+    ['이 가전만의 사용량',kwh.toFixed(1)+' kWh'],
+    ['하루 평균 늘어나는 요금',won(add/(d||1))+'원'],
+    ['평소 요금 (가전 없이)',won(A.total)+'원'],
+    ['가전까지 쓴 요금',won(B.total)+'원'],
+    ['누진 구간',`${t1}단계 → ${t2}단계${t2>t1?' <span class="tag warn">구간 올라감</span>':''}`]
+  ].map(([a,b])=>`<div class="row"><span>${a}</span><span>${b}</span></div>`).join('');
+  $('#tierNote').innerHTML=t2>t1?'<span class="warn">이 가전 때문에 누진 구간이 한 단계 올라가요.</span> 구간이 올라가면 기본요금이 바뀌고, 넘어간 사용량에 더 비싼 단가가 붙어서 같은 kWh라도 요금이 더 크게 늘어나요.':'누진 구간은 그대로예요. 사용 시간을 늘리면 구간이 바뀔 수 있으니 숫자를 바꿔 보세요.';
+}
+['#w','#h','#d','#ratio','#base','#season'].forEach(s=>$(s).addEventListener('input',calc));
+calc();
+</script>
+<script data-goatcounter="https://danggolnote.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>
